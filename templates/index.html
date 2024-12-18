@@ -23,11 +23,31 @@
         <div class="section-box left">
             <h3>Messages</h3>
             <ul id="message-list" class="result-box">
-                <li class="message-item">Test Message 1</li>
-                <li class="message-item">Test Message 2</li>
+
             </ul>
             <div class="button-container">
                 <button onclick="printSelectedMessage()">Print Selected Message</button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close-button" onclick="closeSettingsModal()">&times;</span>
+                <h3>Settings</h3>
+                <label for="simbrief-username">SimBrief Username:</label>
+                <input type="text" id="simbrief-username" placeholder="Enter SimBrief Username">
+
+                <label for="callsign">Callsign:</label>
+                <input type="text" id="callsign" placeholder="Enter Callsign">
+
+                <label for="logon-code">Logon Code:</label>
+                <input type="text" id="logon-code" placeholder="Enter Logon Code">
+
+                <label for="printer-name">Printer Name:</label>
+                <input type="text" id="printer-name" placeholder="Enter Printer Name">
+
+                <button onclick="saveSettings()">Save</button>
             </div>
         </div>
 

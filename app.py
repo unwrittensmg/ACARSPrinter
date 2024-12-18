@@ -1,8 +1,9 @@
 from flask import Flask, render_template, jsonify, request
 import os
 import json
-import requests  # For fetching METAR and ATIS data
-import threading
+import requests
+from subprocess import run
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
@@ -14,21 +15,85 @@ SETTINGS_FILE = os.path.join(DATA_FOLDER, "settings.json")
 os.makedirs(DATA_FOLDER, exist_ok=True)
 
 
-# Load settings
-def load_settings():
-    if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, "r") as file:
-            return json.load(file)
-    return {"callsign": "", "logon_code": "", "simbrief_username": ""}
-
-
 @app.route("/")
 def index():
     """Render the main page."""
     return render_template("index.html")
 
 
-# API Endpoint: Fetch METAR
+# API Endpoint: Get Real CPDLC Messages from VATSIM
+@app.route("/api/messages", methods=["GET"])
+def get_messages():
+    """Fetch real CPDLC messages from VATSIM."""
+    try:
+        # Fetch data from VATSIM's live data feed
+        vatsim_url = "https://data.vatsim.net/v3/vatsim-data.json"
+        response = requests.get(vatsim_url)
+        response.raise_for_status()
+
+        data = response.json()
+
+        # Extract CPDLC messages from the VATSIM feed
+        messages = []
+        for flight in data.get('flight', []):
+            # Assuming CPDLC messages are included in the 'messages' field of each flight
+            if 'messages' in flight:
+                for message in flight['messages']:
+                    messages.append(message)
+
+        if messages:
+            return jsonify(messages)
+        else:
+            return jsonify({"error": "No CPDLC messages found."}), 404
+
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch CPDLC messages: {str(e)}"}), 500
+
+
+# API Endpoint: Print CPDLC Message
+@app.route("/api/print_cpdlc", methods=["POST"])
+def print_cpdlc():
+    try:
+        data = request.json
+        message = data.get("message", "")
+
+        if not message:
+            return jsonify({"error": "No message provided"}), 400
+
+        # Call the print_cpdlc.py script and pass the message as an argument
+        script_path = os.path.join("modules", "print_cpdlc.py")
+        run(["python", script_path, message], check=True)
+
+        return jsonify({"message": "Message sent to printer successfully!"})
+    except Exception as e:
+        return jsonify({"error": f"Failed to print: {str(e)}"}), 500
+
+
+# API Endpoint: Get Settings
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    """Fetch current settings."""
+    if os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "r") as file:
+            settings = json.load(file)
+        return jsonify(settings)
+    return jsonify({"simbrief_username": "", "callsign": "", "logon_code": "", "printer_name": ""})
+
+
+# API Endpoint: Save Settings
+@app.route("/api/settings", methods=["POST"])
+def save_settings():
+    """Save updated settings."""
+    try:
+        data = request.json
+        with open(SETTINGS_FILE, "w") as file:
+            json.dump(data, file, indent=4)
+        return jsonify({"message": "Settings saved successfully!"})
+    except Exception as e:
+        return jsonify({"error": f"Failed to save settings: {str(e)}"}), 500
+
+
+# API Endpoint: Fetch METAR from VATSIM
 @app.route("/api/metar", methods=["GET"])
 def get_metar():
     icao = request.args.get("icao", "").upper()
@@ -36,31 +101,44 @@ def get_metar():
         return jsonify({"error": "No ICAO code provided"}), 400
 
     try:
-        # Fetch METAR data from aviationweather.gov
-        url = f"https://aviationweather.gov/api/data/metar?ids={icao}&format=raw"
-        response = requests.get(url)
+        # Directly fetch METAR data from VATSIM's live data feed
+        vatsim_url = "https://data.vatsim.net/v3/vatsim-data.json"
+        response = requests.get(vatsim_url)
         response.raise_for_status()
 
-        data = response.text.strip()
-        if not data:
-            return jsonify({"error": f"No METAR data found for {icao}."}), 404
+        data = response.json()
 
-        return jsonify({"metar": data})
+        # Search for METAR data in the flight information
+        for flight in data.get('flight', []):
+            if 'metar' in flight and flight.get('callsign') == icao:
+                metar_data = flight['metar']
+                if metar_data:
+                    return jsonify({"metar": metar_data})
+
+        # If no METAR found for the ICAO code in the VATSIM feed
+        return jsonify({"error": f"No METAR data found for {icao}."}), 404
+
+    except requests.exceptions.RequestException as e:
+        # This will catch any request-related exceptions (e.g., network errors)
+        return jsonify({"error": f"Failed to fetch METAR data: {str(e)}"}), 500
     except Exception as e:
-        return jsonify({"error": f"Failed to fetch METAR: {str(e)}"}), 500
+        # This will catch any other exceptions (e.g., parsing errors)
+        return jsonify({"error": f"An error occurred while fetching METAR data: {str(e)}"}), 500
 
 
-# API Endpoint: Fetch ATIS (VATSIM)
+# API Endpoint: Fetch ATIS from VATSIM
 @app.route("/api/atis", methods=["GET"])
 def get_atis():
     icao = request.args.get("icao", "").upper()
     if not icao:
         return jsonify({"error": "No ICAO code provided"}), 400
 
-    vatsim_url = "https://data.vatsim.net/v3/vatsim-data.json"
     try:
+        # Fetch ATIS data from VATSIM API
+        vatsim_url = "https://data.vatsim.net/v3/vatsim-data.json"
         response = requests.get(vatsim_url)
         response.raise_for_status()
+
         data = response.json()
 
         # Filter ATIS data based on ICAO
@@ -78,22 +156,23 @@ def get_atis():
         return jsonify({"error": f"Failed to fetch ATIS data: {str(e)}"}), 500
 
 
-# API Endpoint: Print Simulation
-@app.route("/api/print", methods=["POST"])
-def print_data():
-    data = request.json
-    script = data.get("script", "")
-    content = data.get("content", "")
-
-    if not script or not content:
-        return jsonify({"error": "Invalid print request"}), 400
-
+# API Endpoint: Print ATIS (Triggered when printing ATIS message)
+@app.route("/api/print_atis", methods=["POST"])
+def print_atis():
     try:
-        # Simulated print functionality
-        print(f"Printing using {script}: {content}")
-        return jsonify({"message": "Data sent to printer successfully!"})
+        data = request.json
+        message = data.get("message", "")
+
+        if not message:
+            return jsonify({"error": "No ATIS message provided"}), 400
+
+        # Call the print_cpdlc.py script and pass the ATIS message as an argument
+        script_path = os.path.join("modules", "print_cpdlc.py")
+        run(["python", script_path, message], check=True)
+
+        return jsonify({"message": "ATIS message sent to printer successfully!"})
     except Exception as e:
-        return jsonify({"error": f"Failed to print: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to print ATIS: {str(e)}"}), 500
 
 
 if __name__ == "__main__":

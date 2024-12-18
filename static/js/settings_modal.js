@@ -44,20 +44,20 @@ function saveSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings)
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Failed to save settings.");
-            }
-            return response.json();
-        })
-        .then(data => {
-            alert(data.message || "Settings saved successfully!");
-            closeSettingsModal();
-        })
-        .catch(error => {
-            console.error("Error saving settings:", error);
-            alert("Failed to save settings. Please try again.");
-        });
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Failed to save settings.");
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message || "Settings saved successfully!");
+        closeSettingsModal();
+    })
+    .catch(error => {
+        console.error("Error saving settings:", error);
+        alert("Failed to save settings. Please try again.");
+    });
 }
 
 // Close the modal when clicking outside the modal content
