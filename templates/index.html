@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPDLC Messages</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-left" id="zulu-time">00:00:00 Z</div>
+        <div class="top-center">CPDLC Messages</div>
+        <div class="top-right">
+            <span class="material-icons settings-icon" onclick="openSettingsModal()">settings</span>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Left Side: Messages -->
+        <div class="section-box left">
+            <h3>Messages</h3>
+            <ul id="message-list" class="result-box">
+                <li class="message-item">Test Message 1</li>
+                <li class="message-item">Test Message 2</li>
+            </ul>
+            <div class="button-container">
+                <button onclick="printSelectedMessage()">Print Selected Message</button>
+            </div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="section-box right">
+            <!-- METAR Section -->
+            <div class="section-inner-box">
+                <h3>Fetch METAR</h3>
+                <div class="input-group">
+                    <input type="text" id="metar-icao" placeholder="Enter ICAO Code (e.g., EGLL)">
+                    <button onclick="fetchMETAR()">Get METAR</button>
+                </div>
+                <div id="metar-result" class="result-box">METAR will appear here...</div>
+                <button onclick="printMETAR()">Print METAR</button>
+            </div>
+
+            <!-- ATIS Section -->
+            <div class="section-inner-box">
+                <h3>Fetch ATIS (VATSIM)</h3>
+                <div class="input-group">
+                    <input type="text" id="atis-icao" placeholder="Enter ICAO Code (e.g., EDDF)">
+                    <button onclick="fetchATIS()">Get ATIS</button>
+                </div>
+                <ul id="atis-list" class="result-box"></ul>
+                <button onclick="printSelectedATIS()">Print Selected ATIS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/metar_atis.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settings_modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/message_handler.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/zulu_time.js') }}"></script>
+</body>
+</html>
