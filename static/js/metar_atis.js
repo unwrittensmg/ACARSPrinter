@@ -1,16 +1,18 @@
-// Fetch METAR Data
+// Message Handler: Handles user interactions for fetching and printing METAR/ATIS data
+
+// Fetch and display METAR and TAF from the backend API
 function fetchMETAR() {
-    const icao = document.getElementById("metar-icao").value.trim().toUpperCase();
+    const icaoCode = document.getElementById("metar-icao").value.trim().toUpperCase();
     const resultBox = document.getElementById("metar-result");
 
-    if (!icao) {
+    if (!icaoCode) {
         alert("Please enter a valid ICAO code.");
         return;
     }
 
-    resultBox.textContent = `Fetching METAR for ${icao}...`;
+    resultBox.textContent = `Fetching data for ${icaoCode}...`;
 
-    fetch(`/api/metar?icao=${icao}`)
+    fetch(`/api/metar?icao=${icaoCode}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -18,31 +20,42 @@ function fetchMETAR() {
             return response.json();
         })
         .then(data => {
+            let displayContent = "";
+
             if (data.metar) {
-                resultBox.textContent = data.metar;
+                displayContent += `<strong style="font-size: 16px;">METAR:</strong><br><pre style="font-size: 16px;">${data.metar}</pre><br>`;
             } else {
-                resultBox.textContent = `No METAR data available for ${icao}.`;
+                displayContent += "<strong style=\"font-size: 16px;\">METAR:</strong><br>No METAR data available.<br>";
             }
+
+            if (data.taf) {
+                const formattedTAF = data.taf.replace(/(.{50})/g, "$1\n"); // Break TAF strings every 50 characters
+                displayContent += `<strong style="font-size: 16px;">TAF:</strong><br><pre style="font-size: 16px;">${formattedTAF}</pre>`;
+            } else {
+                displayContent += "<strong style=\"font-size: 16px;\">TAF:</strong><br>No TAF data available.";
+            }
+
+            resultBox.innerHTML = displayContent; // Use innerHTML for formatted content
         })
         .catch(error => {
-            console.error("Error fetching METAR:", error);
-            resultBox.textContent = `Error fetching METAR: ${error.message}`;
+            console.error("Error fetching METAR and TAF:", error);
+            resultBox.textContent = `Error fetching data: ${error.message}`;
         });
 }
 
-// Fetch ATIS Data
+// Fetch and display ATIS from the backend API
 function fetchATIS() {
-    const icao = document.getElementById("atis-icao").value.trim().toUpperCase();
-    const atisList = document.getElementById("atis-list");
+    const icaoCode = document.getElementById("atis-icao").value.trim().toUpperCase();
+    const resultBox = document.getElementById("atis-result");
 
-    if (!icao) {
+    if (!icaoCode) {
         alert("Please enter a valid ICAO code.");
         return;
     }
 
-    atisList.innerHTML = `<li>Fetching ATIS for ${icao}...</li>`;
+    resultBox.textContent = `Fetching ATIS for ${icaoCode}...`;
 
-    fetch(`/api/atis?icao=${icao}`)
+    fetch(`/api/atis?icao=${icaoCode}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -50,77 +63,73 @@ function fetchATIS() {
             return response.json();
         })
         .then(data => {
-            atisList.innerHTML = ""; // Clear the list
             if (data.messages && data.messages.length > 0) {
-                data.messages.forEach(msg => {
-                    const listItem = document.createElement("li");
-                    listItem.textContent = msg;
-                    listItem.classList.add("atis-item");
-                    listItem.onclick = selectATIS; // Add selection functionality
-                    atisList.appendChild(listItem);
-                });
+                resultBox.innerHTML = data.messages.map(msg => `<li style="font-size: 16px;">${msg}</li>`).join("");
             } else {
-                atisList.innerHTML = `<li>No ATIS data available for ${icao}.</li>`;
+                resultBox.innerHTML = `<p style="font-size: 16px;">No ATIS data available for ${icaoCode}.</p>`;
             }
         })
         .catch(error => {
             console.error("Error fetching ATIS:", error);
-            atisList.innerHTML = `<li>${error.message}</li>`;
+            resultBox.innerHTML = `<p style="font-size: 16px;">Error fetching ATIS: ${error.message}</p>`;
         });
 }
 
-// Highlight Selected ATIS Message
-function selectATIS(event) {
-    // Remove "selected" class from all ATIS items
-    document.querySelectorAll(".atis-item").forEach(item => item.classList.remove("selected"));
-    // Add "selected" class to the clicked item
-    event.target.classList.add("selected");
-}
-
-// Print Selected ATIS Message
-function printSelectedATIS() {
-    const selected = document.querySelector(".atis-item.selected");
-    if (!selected) {
-        alert("Please select an ATIS message to print.");
-        return;
-    }
-
-    fetch("/api/print", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script: "print_atis.py", content: selected.textContent })
-    })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message || "ATIS printed successfully!");
-        })
-        .catch(error => {
-            console.error("Error printing ATIS:", error);
-            alert("Failed to print ATIS. Please try again.");
-        });
-}
-
-// Print METAR Data
+// Print selected METAR
 function printMETAR() {
-    const icao = document.getElementById("metar-icao").value;
-    const result = document.getElementById("metar-result").textContent;
+    const resultBox = document.getElementById("metar-result");
+    const message = resultBox.textContent;
 
-    if (!icao || !result.trim()) {
-        alert("Please fetch a METAR before printing.");
+    if (!message || message.startsWith("Error") || message.startsWith("Fetching")) {
+        alert("Please fetch and select valid METAR/TAF data before printing.");
         return;
     }
 
-    fetch("/api/print", {
+    const [metar, taf] = message.split("TAF:");
+
+    fetch("/api/print_metar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script: "print_metar.py", content: `ICAO: ${icao}, ${result}` })
+        body: JSON.stringify({ metar: metar.trim(), taf: taf.trim() })
     })
         .then(response => response.json())
         .then(data => {
-            alert(data.message || "METAR printed successfully!");
+            if (data.error) {
+                alert(`Error: ${data.error}`);
+            } else {
+                alert(data.message);
+            }
         })
         .catch(error => {
             console.error("Error printing METAR:", error);
-            alert("Failed to print METAR. Please try again.");
+            alert("Failed to send the METAR to the printer.");
+        });
+}
+
+
+// Print selected ATIS
+function printATIS() {
+    const selectedATIS = document.querySelector(".atis-item.selected");
+    if (!selectedATIS) {
+        alert("Please select an ATIS message first!");
+        return;
+    }
+
+    fetch("/api/print_atis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: selectedATIS.textContent })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(`Error: ${data.error}`);
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error("Error printing ATIS:", error);
+            alert("Failed to send the ATIS to the printer.");
         });
 }

@@ -1,3 +1,6 @@
 Flask
 requests
 hoppie-connector
+beautifulsoup4
+hoppie_connector
+fpdf

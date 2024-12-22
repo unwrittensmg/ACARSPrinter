@@ -9,85 +9,88 @@ function selectMessage(element) {
     selectedMessage = element.textContent;
 }
 
-// Print selected message
-function printSelectedMessage() {
-    if (!selectedMessage) {
-        alert("Please select a message first!");
-        return;
-    }
-
-    fetch("/api/print_cpdlc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: selectedMessage })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            alert(`Error: ${data.error}`);
-        } else {
-            alert(data.message);
-            console.log("Message sent to printer successfully.");
-        }
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        alert("Failed to send the message to the printer.");
-    });
-}
-
-// Fetch and display METAR from OpenWeatherMap
+// Fetch and display METAR and TAF from the backend API
 function fetchMETAR() {
-    const icaoCode = document.getElementById("metar-icao").value;
+    const icaoCode = document.getElementById("metar-icao").value.trim().toUpperCase();
+    const resultBox = document.getElementById("metar-result");
+
     if (!icaoCode) {
         alert("Please enter a valid ICAO code.");
         return;
     }
 
+    resultBox.textContent = `Fetching data for ${icaoCode}...`;
+
     fetch(`/api/metar?icao=${icaoCode}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.metar) {
-                document.getElementById("metar-result").textContent = data.metar;
-            } else {
-                document.getElementById("metar-result").textContent = "Error fetching METAR: " + (data.error || "Unknown error");
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
             }
+            return response.json();
+        })
+        .then(data => {
+            let displayContent = "";
+
+            if (data.metar) {
+                displayContent += `<strong>METAR:</strong><br><pre>${data.metar}</pre><br>`;
+            } else {
+                displayContent += "<strong>METAR:</strong><br>No METAR data available.<br>";
+            }
+
+            if (data.taf) {
+                const formattedTAF = data.taf.replace(/(.{50})/g, "$1\n");
+                displayContent += `<strong>TAF:</strong><br><pre>${formattedTAF}</pre>`;
+            } else {
+                displayContent += "<strong>TAF:</strong><br>No TAF data available.";
+            }
+
+            resultBox.innerHTML = displayContent;
         })
         .catch(error => {
-            console.error("Error fetching METAR:", error);
-            document.getElementById("metar-result").textContent = "Error fetching METAR: " + error.message;
+            console.error("Error fetching METAR and TAF:", error);
+            resultBox.textContent = `Error fetching data: ${error.message}`;
         });
 }
 
-// Fetch and display ATIS
+// Fetch and display ATIS from the backend API
 function fetchATIS() {
-    const icaoCode = document.getElementById("atis-icao").value;
+    const icaoCode = document.getElementById("atis-icao").value.trim().toUpperCase();
+    const resultBox = document.getElementById("atis-list");
+
     if (!icaoCode) {
         alert("Please enter a valid ICAO code.");
         return;
     }
 
-    fetch(`/api/atis?icao=${icaoCode}`)
-        .then(response => response.json())
-        .then(data => {
-            const atisList = document.getElementById("atis-list");
-            atisList.innerHTML = "";  // Clear existing ATIS messages
+    resultBox.innerHTML = `<li>Fetching ATIS for ${icaoCode}...</li>`;
 
-            if (data.messages) {
-                data.messages.forEach(msg => {
-                    const li = document.createElement("li");
-                    li.classList.add("atis-item");
-                    li.textContent = msg;
-                    li.onclick = () => selectMessage(li);  // Add click event for selecting ATIS messages
-                    atisList.appendChild(li);
+    fetch(`/api/atis?icao=${icaoCode}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.messages && data.messages.length > 0) {
+                resultBox.innerHTML = data.messages
+                    .map(msg => `<li class="atis-item">${msg}</li>`)
+                    .join("");
+
+                // Add click handler for each ATIS item
+                document.querySelectorAll(".atis-item").forEach(item => {
+                    item.addEventListener("click", () => {
+                        document.querySelectorAll(".atis-item").forEach(el => el.classList.remove("selected"));
+                        item.classList.add("selected");
+                    });
                 });
             } else {
-                atisList.textContent = "Error fetching ATIS: " + (data.error || "Unknown error");
+                resultBox.innerHTML = `<li>No ATIS data available for ${icaoCode}.</li>`;
             }
         })
         .catch(error => {
             console.error("Error fetching ATIS:", error);
-            document.getElementById("atis-list").textContent = "Error fetching ATIS: " + error.message;
+            resultBox.innerHTML = `<li>Error fetching ATIS: ${error.message}</li>`;
         });
 }
 
@@ -104,16 +107,16 @@ function printSelectedATIS() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: selectedATIS.textContent })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            alert(`Error: ${data.error}`);
-        } else {
-            alert(data.message);
-        }
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        alert("Failed to send ATIS to printer.");
-    });
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(`Error: ${data.error}`);
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error("Error printing ATIS:", error);
+            alert("Failed to send ATIS to the printer.");
+        });
 }

@@ -23,6 +23,26 @@ function loadSettings() {
             document.getElementById("callsign").value = data.callsign || "";
             document.getElementById("logon-code").value = data.logon_code || "";
             document.getElementById("printer-name").value = data.printer_name || "";
+
+            // Auto-fetch callsign if SimBrief username is available
+            if (data.simbrief_username) {
+                fetch(`/api/simbrief_callsign?username=${data.simbrief_username}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error("Failed to fetch SimBrief callsign.");
+                        }
+                        return response.json();
+                    })
+                    .then(callsignData => {
+                        if (callsignData.callsign) {
+                            document.getElementById("callsign").value = callsignData.callsign;
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error fetching SimBrief callsign:", error);
+                        alert("Failed to fetch SimBrief callsign. Please check the username.");
+                    });
+            }
         })
         .catch(error => {
             console.error("Error loading settings:", error);
@@ -33,10 +53,10 @@ function loadSettings() {
 // Save settings and send them to the server
 function saveSettings() {
     const settings = {
-        simbrief_username: document.getElementById("simbrief-username").value,
-        callsign: document.getElementById("callsign").value,
-        logon_code: document.getElementById("logon-code").value,
-        printer_name: document.getElementById("printer-name").value
+        simbrief_username: document.getElementById("simbrief-username").value.trim(),
+        callsign: document.getElementById("callsign").value.trim(),
+        logon_code: document.getElementById("logon-code").value.trim(),
+        printer_name: document.getElementById("printer-name").value.trim()
     };
 
     fetch("/api/settings", {
@@ -67,3 +87,20 @@ window.onclick = function(event) {
         closeSettingsModal();
     }
 };
+
+// Automatically open settings modal if triggered
+function triggerSettingsModal() {
+    const settingsButton = document.getElementById("open-settings-btn");
+    if (settingsButton) {
+        settingsButton.addEventListener("click", openSettingsModal);
+    }
+}
+
+// Initialize modal and bind buttons when the DOM is loaded
+document.addEventListener("DOMContentLoaded", () => {
+    triggerSettingsModal();
+    const saveButton = document.getElementById("save-settings-btn");
+    if (saveButton) {
+        saveButton.addEventListener("click", saveSettings);
+    }
+});

@@ -22,9 +22,7 @@
         <!-- Left Side: Messages -->
         <div class="section-box left">
             <h3>Messages</h3>
-            <ul id="message-list" class="result-box">
-
-            </ul>
+            <ul id="message-list" class="result-box"></ul>
             <div class="button-container">
                 <button onclick="printSelectedMessage()">Print Selected Message</button>
             </div>
@@ -71,7 +69,9 @@
                     <input type="text" id="atis-icao" placeholder="Enter ICAO Code (e.g., EDDF)">
                     <button onclick="fetchATIS()">Get ATIS</button>
                 </div>
-                <ul id="atis-list" class="result-box"></ul>
+                <ul id="atis-list" class="result-box">
+                    <!-- Dynamic ATIS list items will appear here -->
+                </ul>
                 <button onclick="printSelectedATIS()">Print Selected ATIS</button>
             </div>
         </div>
