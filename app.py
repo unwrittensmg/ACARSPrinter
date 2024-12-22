@@ -4,8 +4,17 @@ import json
 import requests
 from subprocess import run
 
-app = Flask(__name__)
+import os
+print(f"Templates path: {os.path.abspath('templates')}")
 
+# Dynamically set the template and static folder paths
+base_dir = os.path.abspath(os.path.dirname(__file__))
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(base_dir, "templates"),
+    static_folder=os.path.join(base_dir, "static"),
+)
 # Paths and Constants
 DATA_FOLDER = os.path.join(os.getcwd(), "data")
 SETTINGS_FILE = os.path.join(DATA_FOLDER, "settings.json")

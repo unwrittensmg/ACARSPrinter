@@ -53,18 +53,18 @@
         <div class="section-box right">
             <!-- METAR Section -->
             <div class="section-inner-box">
-                <h3>Fetch METAR</h3>
+                <h3>METAR/TAF</h3>
                 <div class="input-group">
                     <input type="text" id="metar-icao" placeholder="Enter ICAO Code (e.g., EGLL)">
-                    <button onclick="fetchMETAR()">Get METAR</button>
+                    <button onclick="fetchMETAR()">Get METAR/TAF</button>
                 </div>
-                <div id="metar-result" class="result-box">METAR will appear here...</div>
-                <button onclick="printMETAR()">Print METAR</button>
+                <div id="metar-result" class="result-box">METAR and TAF will appear here...</div>
+                <button onclick="printMETAR()">Print METAR/TAF</button>
             </div>
 
             <!-- ATIS Section -->
             <div class="section-inner-box">
-                <h3>Fetch ATIS (VATSIM)</h3>
+                <h3>ATIS (VATSIM)</h3>
                 <div class="input-group">
                     <input type="text" id="atis-icao" placeholder="Enter ICAO Code (e.g., EDDF)">
                     <button onclick="fetchATIS()">Get ATIS</button>

@@ -266,3 +266,4 @@ pyrightconfig.json
 .venv
 .idea
 /data/api_keys.json
+/dist
